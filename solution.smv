@@ -1,0 +1,81 @@
+-- В горнолыжном курорте имеется сервис аренды лыж. В сервисе имеется 3 пары лыж.
+-- Клиенты приходят в сервис и становятся в очередь за лыжами в зале на N мест. 
+-- Лыжи выдаются в аренду на время от 1 до 5 квантов времени, после чего лыжи возвращаются в сервис. 
+-- Если свободных мест в зале нет, клиент уходит расстроенным.
+-- Необходимо проверить следующие свойства:
+-- Если в сервисе есть свободные лыжи, то они отдаются клиенту
+-- Клиент, пришедший раньше, получает лыжи в аренду раньше
+-- Также необходимо найти минимальное N, при котором никто не уйдет расстроенным.
+
+MODULE main
+
+DEFINE
+  N := 10;
+  has_free_ski := (ski[1] = 0) | (ski[2] = 0) | (ski[3] = 0);
+
+IVAR
+  does_client_came: boolean;
+  how_many_tacts_client_wants: 1..5;
+
+VAR
+  -- if ski[i] = 0 then it free, else how many tacts it will be occupied
+  ski: array 1..3 of 0..5;
+  clients_in_queue: 0..N;
+
+ASSIGN
+
+  init(ski[1]) := 0;
+  init(ski[2]) := 0;
+  init(ski[3]) := 0;
+  init(clients_in_queue) := 0;
+
+
+  next(clients_in_queue) := case
+    has_free_ski & (does_client_came = TRUE) 
+      : clients_in_queue;
+    
+    !has_free_ski & (does_client_came = TRUE) & (clients_in_queue < N)
+      : clients_in_queue + 1;
+    
+    has_free_ski & (does_client_came = FALSE) & clients_in_queue > 0 
+      : clients_in_queue - 1;
+    
+    TRUE : clients_in_queue;
+  esac;
+
+  next(ski[1]) := case 
+    (ski[1] > 0) : ski[1] - 1;
+    (ski[1] = 0) & (clients_in_queue > 0 | does_client_came = TRUE) : how_many_tacts_client_wants;
+    (ski[1] = 0) : 0;
+  esac;
+
+  next(ski[2]) := case 
+    (ski[2] > 0) 
+      : ski[2] - 1;
+    
+    (ski[1] > 0) & (ski[2] = 0) & (clients_in_queue > 0 | does_client_came = TRUE) 
+      : how_many_tacts_client_wants;
+    
+    (ski[2] = 0) : 0;
+  esac;
+
+  next(ski[3]) := case 
+    (ski[3] > 0) 
+      : ski[3] - 1;
+    
+    (ski[2] > 0) & (ski[3] = 0) & (clients_in_queue > 0 | does_client_came = TRUE) 
+      : how_many_tacts_client_wants;
+    
+    (ski[3] = 0) : 0;
+  esac;
+
+
+LTLSPEC
+  NAME was_sad_client_in_queue := G(((does_client_came = TRUE) & (clients_in_queue = N)) = FALSE);
+
+LTLSPEC
+  NAME if_ski_is_free_and_there_is_client_than_give_ski := 
+    G(ski[1] = 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[1]) > 0)
+    & G(ski[2] = 0 & ski[1] > 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[2]) > 0)
+    & G(ski[3] = 0 & ski[2] > 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[3]) > 0)
+   

@@ -1,0 +1,10 @@
+# read_model -i solution.smv
+read_model -i solution_prove_clients_order.smv
+flatten_hierarchy 
+encode_variables 
+build_model
+pick_state 
+# go
+# simulate -i -v -k 10
+check_ltlspec
+quit

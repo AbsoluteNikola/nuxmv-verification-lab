@@ -1,0 +1,128 @@
+-- В горнолыжном курорте имеется сервис аренды лыж. В сервисе имеется 3 пары лыж.
+-- Клиенты приходят в сервис и становятся в очередь за лыжами в зале на N мест. 
+-- Лыжи выдаются в аренду на время от 1 до 5 квантов времени, после чего лыжи возвращаются в сервис. 
+-- Если свободных мест в зале нет, клиент уходит расстроенным.
+-- Необходимо проверить следующие свойства:
+-- Если в сервисе есть свободные лыжи, то они отдаются клиенту
+-- Клиент, пришедший раньше, получает лыжи в аренду раньше
+-- Также необходимо найти минимальное N, при котором никто не уйдет расстроенным.
+
+
+
+MODULE FIFO(command, clientId)
+    VAR
+      queue: array 1..3 of 0..4;
+
+  ASSIGN
+    init(queue[1]) := 0;
+    init(queue[2]) := 0;
+    init(queue[3]) := 0;
+
+  DEFINE
+    queueSize := count(queue[1] != 0, queue[2] != 0, queue[3] != 0);
+    firstTask := queue[1];
+    isEmpty := queueSize = 0;
+    isFull := queueSize = 3;
+
+  TRANS
+    case
+      (command = DEQUEUE) : 
+        next(queue[1]) = queue[2] & next(queue[2]) = queue[3] & next(queue[3]) = 0;
+      
+      (command = DEQUEUE_AND_ENQUEUE) : 
+          case
+            (queueSize = 0) : (next(queue[1]) = clientId & next(queue[2]) = 0 & next(queue[3]) = 0);
+            (queueSize = 1) : (next(queue[1]) = clientId & next(queue[2]) = 0 & next(queue[3]) = 0);
+            (queueSize = 2) : (next(queue[1]) = queue[2] & next(queue[2]) = clientId & next(queue[3]) = 0);
+            (queueSize = 3) : (next(queue[1]) = queue[2] & next(queue[2]) = queue[3] & next(queue[3]) = clientId);          esac;
+      
+      (command = ENQUEUE): 
+          case
+              (queueSize = 0) : (next(queue[1]) = clientId & next(queue[2]) = queue[2] & next(queue[3]) = queue[3]);
+              (queueSize = 1) : (next(queue[1]) = queue[1] & next(queue[2]) = clientId & next(queue[3]) = queue[3]);
+              (queueSize = 2) : (next(queue[1]) = queue[1] & next(queue[2]) = queue[2] & next(queue[3]) = clientId);
+              TRUE : (next(queue[1]) = queue[1] & next(queue[2]) = queue[2] & next(queue[3]) = queue[3]);
+          esac;
+      TRUE : (next(queue[1]) = queue[1] & next(queue[2]) = queue[2] & next(queue[3]) = queue[3]);
+    esac;
+
+LTLSPEC
+  NAME clients_order := G(((queue[1] <= queue[2]) & (queue[2] <= queue[3]))
+    | ((queue[1] <= queue[2]) & (queue[3] = 0))
+    | ((queue[2] = 0) & (queue[3] = 0)))
+  
+
+MODULE main
+
+DEFINE
+  N := 3;
+  has_free_ski := (ski[1] = 0) | (ski[2] = 0) | (ski[3] = 0);
+
+IVAR
+  does_client_came: boolean;
+  how_many_tacts_client_wants: 1..5;
+
+VAR
+  -- if ski[i] = 0 then it free, else how many tacts it will be occupied
+  ski: array 1..3 of 0..5;
+  clients_queue: FIFO(queue_command, clients_id_counter);
+  queue_command: { DEQUEUE, ENQUEUE, DEQUEUE_AND_ENQUEUE, NOP };
+  clients_id_counter: 1..1000;
+
+ASSIGN
+
+  init(ski[1]) := 0;
+  init(ski[2]) := 0;
+  init(ski[3]) := 0;
+  init(clients_id_counter) := 1;
+
+  next(clients_id_counter) := case 
+    (clients_id_counter = 1000) : clients_id_counter;
+    (does_client_came = TRUE) : clients_id_counter + 1;
+    TRUE : clients_id_counter;
+  esac;
+
+  next(clients_queue.command) := case 
+  -- Есть лыжи?, очередь пустая? пришел клиент?
+    (has_free_ski & clients_queue.isEmpty & does_client_came) : NOP;
+    (!has_free_ski & does_client_came) : ENQUEUE;
+    (has_free_ski & (clients_queue.queueSize > 0) & does_client_came) : DEQUEUE_AND_ENQUEUE;
+    (has_free_ski & (clients_queue.queueSize > 0) & !does_client_came) : DEQUEUE;
+    TRUE: NOP;
+  esac;
+
+  next(ski[1]) := case 
+    (ski[1] > 0) : ski[1] - 1;
+    (ski[1] = 0) & (clients_queue.queueSize > 0) : how_many_tacts_client_wants;
+    (ski[1] = 0) : 0;
+  esac;
+
+  next(ski[2]) := case 
+    (ski[2] > 0) 
+      : ski[2] - 1;
+    
+    (ski[1] > 0) & (ski[2] = 0) & (clients_queue.queueSize > 0) 
+      : how_many_tacts_client_wants;
+    
+    (ski[2] = 0) : 0;
+  esac;
+
+  next(ski[3]) := case 
+    (ski[3] > 0) 
+      : ski[3] - 1;
+    
+    (ski[2] > 0) & (ski[3] = 0) & (clients_queue.queueSize > 0) 
+      : how_many_tacts_client_wants;
+    
+    (ski[3] = 0) : 0;
+  esac;
+
+-- LTLSPEC
+--   NAME was_sad_client_in_queue := G(was_sad_client = FALSE);
+
+LTLSPEC
+  NAME if_ski_is_free_and_there_is_client_than_give_ski := 
+    G(ski[1] = 0 & (clients_queue.queueSize > 0) -> next(ski[1]) > 0)
+    & G(ski[2] = 0 & ski[1] > 0 & (clients_queue.queueSize > 0) -> next(ski[2]) > 0)
+    & G(ski[3] = 0 & ski[2] > 0 & (clients_queue.queueSize > 0) -> next(ski[3]) > 0)
+   
