@@ -70,12 +70,12 @@ ASSIGN
   esac;
 
 
-LTLSPEC
-  NAME was_sad_client_in_queue := G(((does_client_came = TRUE) & (clients_in_queue = N)) = FALSE);
+-- LTLSPEC
+--   NAME was_sad_client_in_queue := G(((does_client_came = TRUE) & (clients_in_queue = N)) = FALSE);
 
 LTLSPEC
-  NAME if_ski_is_free_and_there_is_client_than_give_ski := 
-    G(ski[1] = 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[1]) > 0)
-    & G(ski[2] = 0 & ski[1] > 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[2]) > 0)
-    & G(ski[3] = 0 & ski[2] > 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[3]) > 0)
+  NAME if_ski_is_free_and_there_is_client_than_give_ski_1 := 
+    G( (ski[1] = 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[1]) > 0)
+     | (ski[2] = 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[2]) > 0)
+     | (ski[3] = 0 & (clients_in_queue > 0 | does_client_came = TRUE) -> next(ski[3]) > 0))
    

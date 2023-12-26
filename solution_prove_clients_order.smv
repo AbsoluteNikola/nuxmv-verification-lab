@@ -34,7 +34,8 @@ MODULE FIFO(command, clientId)
             (queueSize = 0) : (next(queue[1]) = clientId & next(queue[2]) = 0 & next(queue[3]) = 0);
             (queueSize = 1) : (next(queue[1]) = clientId & next(queue[2]) = 0 & next(queue[3]) = 0);
             (queueSize = 2) : (next(queue[1]) = queue[2] & next(queue[2]) = clientId & next(queue[3]) = 0);
-            (queueSize = 3) : (next(queue[1]) = queue[2] & next(queue[2]) = queue[3] & next(queue[3]) = clientId);          esac;
+            (queueSize = 3) : (next(queue[1]) = queue[2] & next(queue[2]) = queue[3] & next(queue[3]) = clientId);          
+          esac;
       
       (command = ENQUEUE): 
           case
@@ -121,8 +122,7 @@ ASSIGN
 --   NAME was_sad_client_in_queue := G(was_sad_client = FALSE);
 
 LTLSPEC
-  NAME if_ski_is_free_and_there_is_client_than_give_ski := 
-    G(ski[1] = 0 & (clients_queue.queueSize > 0) -> next(ski[1]) > 0)
-    & G(ski[2] = 0 & ski[1] > 0 & (clients_queue.queueSize > 0) -> next(ski[2]) > 0)
-    & G(ski[3] = 0 & ski[2] > 0 & (clients_queue.queueSize > 0) -> next(ski[3]) > 0)
-   
+  NAME if_ski_is_free_and_there_is_client_than_give_ski_1 := 
+    G( (ski[1] = 0 & (clients_queue.queueSize > 0) -> next(ski[1]) > 0)
+     | (ski[2] = 0 & (clients_queue.queueSize > 0) -> next(ski[2]) > 0)
+     | (ski[3] = 0 & (clients_queue.queueSize > 0) -> next(ski[3]) > 0))
